@@ -140,11 +140,14 @@ func (crMgr *CRManager) virtualPorts(vs *cisapiv1.VirtualServer) []portStruct {
 	}
 	var ports []portStruct
 
-	// TODO  ==> This will change when we implement TLS and unsecured model.
-	// For TLS we need both https and http VirtualServers
-	// while for unsecured we just need http VirtualServer.
-	ports = append(ports, http)
-	ports = append(ports, https)
+	if len(vs.Spec.VirtualServerAddress) > 0 {
+		// 2 virtual servers needed, both HTTP and HTTPS
+		ports = append(ports, http)
+		ports = append(ports, https)
+	} else {
+		// HTTP only
+		ports = append(ports, http)
+	}
 
 	return ports
 }
@@ -154,15 +157,13 @@ func formatVirtualServerName(ip string, port int32) string {
 	// Strip any bracket characters; replace special characters ". : /"
 	// with "-" and "%" with ".", for naming purposes
 	ip = strings.Trim(ip, "[]")
-	var replacer = strings.NewReplacer(".", "_", ":", "_", "/", "_", "%", ".", "-", "_")
-	ip = replacer.Replace(ip)
+	ip = AS3NameFormatter(ip)
 	return fmt.Sprintf("f5_crd_virtualserver_%s_%d", ip, port)
 }
 
 // format the pool name for an VirtualServer
 func formatVirtualServerPoolName(namespace, svc string) string {
-	var replacer = strings.NewReplacer(".", "_", ":", "_", "/", "_", "-", "_")
-	svc = replacer.Replace(svc)
+	svc = AS3NameFormatter(svc)
 	return fmt.Sprintf("%s_%s", namespace, svc)
 }
 
@@ -880,7 +881,7 @@ func (rcs ResourceConfigs) GetAllPoolMembers() []Member {
 
 // AS3NameFormatter formarts resources names according to AS3 convention
 // TODO: Should we use this? Or this will be done in agent?
-func (crMgr *CRManager) AS3NameFormatter(name string) string {
+func AS3NameFormatter(name string) string {
 	replacer := strings.NewReplacer(".", "_", ":", "_", "/", "_", "%", ".", "-", "_")
 	name = replacer.Replace(name)
 	return name
